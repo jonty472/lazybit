@@ -1,4 +1,5 @@
 #include <curses.h>
+#include <string.h>
 
 const int KEY_ESCAPE = 27;
 WINDOW *create_new_box_window(int height, int width, int starty, int startx);
@@ -8,6 +9,7 @@ void enter_todo_item_window(WINDOW *todo_item_window);
 void activate_window(WINDOW *window);
 void deactivate_window(WINDOW *window);
 void add_todo_item(WINDOW *todo_window, char input[100]);
+char *get_todo_item(WINDOW *window, int current_y, int current_x);
 
 int main(void) {
 
@@ -18,9 +20,14 @@ int main(void) {
   start_color();
   noecho();
 
+  // whole screen colour
   init_pair(1, COLOR_WHITE, COLOR_BLACK);
+  // window activation colour
   init_pair(2, COLOR_RED, COLOR_BLACK);
+  // window deactivation colour
   init_pair(3, COLOR_GREEN, COLOR_BLACK);
+  // todo item text selection colour
+  init_pair(4, COLOR_BLACK, COLOR_WHITE);
 
   attron(COLOR_PAIR(1));
   refresh();
@@ -144,15 +151,29 @@ void enter_todo_item_window(WINDOW *todo_window) {
   wmove(todo_window, 1, 1);
   wrefresh(todo_window);
 
-  int ch, cursor_current_y, cursor_current_x;
+  char buffer[100] = {0};
+  chtype todo_item_char;
+
+  int ch, cursor_current_y, cursor_current_x, todo_item_index;
   cursor_current_y = 1;
   cursor_current_x = 1;
+  todo_item_index = 0;
   while ((ch = getch()) != 27) {
     switch (ch) {
     case KEY_DOWN:
+      for (int i = 0; todo_item_char < 10; ++i) {
+        todo_item_char = mvwinch(todo_window, cursor_current_y, i);
+        buffer[todo_item_index++] = todo_item_char;
+      }
       ++cursor_current_y;
+      wattron(todo_window, A_BOLD | COLOR_PAIR(4));
+      // mvwprintw(todo_window, cursor_current_y, cursor_current_x, "%s",
+      // buffer);
       wmove(todo_window, cursor_current_y, cursor_current_x);
       wrefresh(todo_window);
+      wattroff(todo_window, A_BOLD | COLOR_PAIR(4));
+      // memset clears the buffer
+      // memset(buffer, 0, sizeof(buffer));
       break;
     case KEY_UP:
       --cursor_current_y;
@@ -169,4 +190,20 @@ void deactivate_window(WINDOW *window) {
   box(window, 0, 0);
   wrefresh(window);
   wattroff(window, COLOR_PAIR(2));
+}
+
+char *get_todo_item(WINDOW *window, int current_y, int current_x) {
+  // todo
+  chtype todo_item;
+  char todo_item_char;
+  char *test = "";
+
+  int todo_item_index = 0;
+  for (int i = 0; todo_item_char < 10; ++i) {
+    todo_item = mvwinch(window, current_y, i);
+    // find some way of printing todo_item_char, so we can check if there is a null terminator
+    todo_item_char = todo_item & A_CHARTEXT;
+    test[todo_item_index++] = todo_item_char;
+  }
+  return test;
 }
